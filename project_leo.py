@@ -272,7 +272,7 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
     new_df['predicted']=Y.columns[list(np.argmax(predicted, axis=1))]
 
     # Create the performance report
-    print(classification_report(new_df['y_true'],Y.columns[list(np.argmax(predicted, axis=1))], target_names=Y.columns))
+    print(classification_report(new_df['label'],Y.columns[list(np.argmax(predicted, axis=1))]))
     return predicted,history
 
 #with 1000 sample dataset
