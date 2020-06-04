@@ -260,7 +260,7 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
     predicted = model.predict(X_new)
 
     # # Choose the class with higher probability
-    y_pred = (pred > 0.5)
+    y_pred = (predicted > 0.5)
     unseen_df_500['predicted'] = y_pred
 
     # Create the performance report
@@ -272,7 +272,7 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
 # pred=LSTM_model(balanced_train_1000, balanced_test_1000, file_data_new,1000,30000,10,32)
 
 #with 500 sample dataset, parameters for the results presented in the report
-pred,history=LSTM_model(data_df_500, unseen_df_500,500,100000,1,1000)
+pred_slow,history_slow=LSTM_model(data_df_500, unseen_df_500,500,100000,1,100)
 #1536s 26ms/step - loss: 0.1685 - accuracy: 0.9366 - val_loss: 0.3577 - val_accuracy: 0.8265
 # Train set
 #   Loss: 0.329
@@ -280,7 +280,6 @@ pred,history=LSTM_model(data_df_500, unseen_df_500,500,100000,1,1000)
 # Test set
 #   Loss: 0.358
 #   Accuracy: 0.827
-
 
 # X_new prediction performance
 #               precision    recall  f1-score   support
