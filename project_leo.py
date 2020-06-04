@@ -273,11 +273,11 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
 
     # Create the performance report
     print(classification_report(new_df['y_true'],Y.columns[list(np.argmax(predicted, axis=1))], target_names=Y.columns))
-    return predicted
+    return predicted,history
 
 #with 1000 sample dataset
 # pred=LSTM_model(balanced_train_1000, balanced_test_1000, file_data_new,1000,30000,10,32)
 
 #with 500 sample dataset, parameters for the results presented in the report
-pred=LSTM_model(data_df_500, unseen_df_500,500,100000,10,40)
+pred,history=LSTM_model(data_df_500, unseen_df_500,500,100000,1,100)
 
