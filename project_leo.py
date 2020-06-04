@@ -4,20 +4,12 @@ from nltk.stem.wordnet import WordNetLemmatizer
 from nltk.stem import SnowballStemmer
 from bs4 import BeautifulSoup
 import string
-import pandas as pd
-import numpy as np
-import os
 import re
 import random
-from sklearn.naive_bayes import MultinomialNB
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import classification_report
-from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
-from keras.models import Sequential
 from keras.layers import Dense, Embedding, LSTM, SpatialDropout1D
 from keras.callbacks import EarlyStopping
 from keras.layers import Dropout
@@ -26,7 +18,6 @@ from keras.wrappers.scikit_learn import KerasClassifier
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import KFold
 import tensorflow as tf
-import matplotlib.pyplot as plt
 import pickle
 import warnings
 import datetime
@@ -269,15 +260,32 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
     predicted = model.predict(X_new)
 
     # # Choose the class with higher probability
-    new_df['predicted']=Y.columns[list(np.argmax(predicted, axis=1))]
+    y_pred = (pred > 0.5)
+    unseen_df_500['predicted'] = y_pred
 
     # Create the performance report
-    print(classification_report(new_df['label'],Y.columns[list(np.argmax(predicted, axis=1))]))
-    return predicted,history
+    print(classification_report(unseen_df_500['label'], unseen_df_500['predicted']))
+
+    return predicted, history
 
 #with 1000 sample dataset
 # pred=LSTM_model(balanced_train_1000, balanced_test_1000, file_data_new,1000,30000,10,32)
 
 #with 500 sample dataset, parameters for the results presented in the report
-pred,history=LSTM_model(data_df_500, unseen_df_500,500,100000,1,100)
+pred,history=LSTM_model(data_df_500, unseen_df_500,500,100000,1,1000)
+#1536s 26ms/step - loss: 0.1685 - accuracy: 0.9366 - val_loss: 0.3577 - val_accuracy: 0.8265
+# Train set
+#   Loss: 0.329
+#   Accuracy: 0.854
+# Test set
+#   Loss: 0.358
+#   Accuracy: 0.827
 
+
+# X_new prediction performance
+#               precision    recall  f1-score   support
+#            0       0.87      0.92      0.90      1811
+#            1       0.85      0.77      0.81      1067
+#     accuracy                           0.87      2878
+#    macro avg       0.86      0.85      0.85      2878
+# weighted avg       0.87      0.87      0.86      2878
