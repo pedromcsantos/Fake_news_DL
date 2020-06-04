@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[2]:
-
 
 import numpy as np
 import pandas as pd
@@ -21,7 +16,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-# In[3]:
+# In[2]:
 
 
 real = pd.read_csv("True.csv")
@@ -30,25 +25,25 @@ fake = pd.read_csv("Fake.csv")
 
 # ## Explore Fake News Dataset
 
-# In[4]:
+# In[3]:
 
 
 fake.info()
 
 
-# In[5]:
+# In[4]:
 
 
 sns.countplot(fake.subject)
 
 
-# In[6]:
+# In[5]:
 
 
 fake.title.head()
 
 
-# In[7]:
+# In[6]:
 
 
 fake.text.head()
@@ -56,25 +51,25 @@ fake.text.head()
 
 # ## Explore Real News Dataset
 
-# In[8]:
+# In[7]:
 
 
 real.info()
 
 
-# In[9]:
+# In[8]:
 
 
 sns.countplot(real.subject) #less subjects
 
 
-# In[10]:
+# In[9]:
 
 
 real.title.head()
 
 
-# In[11]:
+# In[10]:
 
 
 real.text.head() 
@@ -82,7 +77,7 @@ real.text.head()
 #source can also be twitter
 
 
-# In[12]:
+# In[11]:
 
 
 source = []
@@ -96,14 +91,14 @@ for row in real.text:
          new_text.append(record[0])
 
 
-# In[13]:
+# In[12]:
 
 
 real["source"] = source
 real["text"] = new_text #replace the previous text with the new one without source
 
 
-# In[14]:
+# In[13]:
 
 
 real
@@ -111,7 +106,7 @@ real
 
 # ## Pre-processing
 
-# In[15]:
+# In[14]:
 
 
 #Create label for real/fake
@@ -119,14 +114,14 @@ real["label"] = 1
 fake["label"] = 0
 
 
-# In[16]:
+# In[15]:
 
 
 #merge both datasets
 df = pd.concat([real, fake])
 
 
-# In[17]:
+# In[16]:
 
 
 #2 approaches: with Text only or with Text + Title
@@ -138,14 +133,14 @@ if text_title == True:
        
 
 
-# In[18]:
+# In[17]:
 
 
 #Drop columns
 df.drop(["date","source","subject","title"], axis=1, inplace=True)
 
 
-# In[19]:
+# In[18]:
 
 
 #from nltk.corpus import stopwords
@@ -157,9 +152,9 @@ def preprocess_dataset(df):
     sequence_text = tokenizer.texts_to_sequences(df.text)
     padded_text = pad_sequences(sequence_text, maxlen=None)
     targets = df.label
-    tf_idf = TfidfVectorizer(max_features=10000,stop_words={'english'})
-    tf_idf_fit = tf_idf.fit(sequence_text)
-    tf_idf_vec = tf_idf.transform(sequence_text)
+    tf_idf = TfidfVectorizer(max_features=10000)
+    tf_idf.fit(df.text)
+    tf_idf_vec = tf_idf.transform(df.text)
 
     return padded_text, targets, tf_idf, tf_idf_vec
 """
@@ -172,7 +167,7 @@ def preprocess_dataset(df):
 """
 
 
-# In[20]:
+# In[19]:
 
 
 def model(embedding_dim=128):
@@ -184,7 +179,7 @@ def model(embedding_dim=128):
     return model
 
 
-# In[21]:
+# In[20]:
 
 
 def model_history(model, X_train,y_train, epochs, batch_size):
@@ -192,17 +187,17 @@ def model_history(model, X_train,y_train, epochs, batch_size):
     history = model.fit(X_train, y_train,
                        epochs=epochs,
                        batch_size=batch_size,
-                       validation_split=0.2)
+                       validation_split=0.3)
     return history
 
 
-# In[22]:
+# In[21]:
 
 
 model().summary()
 
 
-# In[ ]:
+# In[22]:
 
 
 padded_text, targets, tf_idf, tf_idf_vec = preprocess_dataset(df)
@@ -213,10 +208,10 @@ def splits(text, target):
     return X_train,X_val,X_test,y_train,y_val,y_test
 
 X_train,X_val,X_test,y_train,y_val,y_test = splits(padded_text,targets)
-X_traintf,X_valtf,X_testtf,y_traintf,y_valtf,y_testtf = splits(tf_idf_vec)
+X_traintf,X_valtf,X_testtf,y_traintf,y_valtf,y_testtf = splits(tf_idf_vec,targets)
 
 
-# In[ ]:
+# In[23]:
 
 
 model = model()
@@ -225,11 +220,15 @@ model = model()
 # In[ ]:
 
 
-history = model_history(model, X_train, y_train, 1, 1000)
+from tensorflow.keras.optimizers import Adam
+history = model_history(model, X_traintf, y_traintf, 10, 128)
 
 
 # In[ ]:
 
 
+import tensorflow as tf
 
+
+sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
