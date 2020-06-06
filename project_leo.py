@@ -291,34 +291,3 @@ pred_slow_1_fl,history_slow_1_fl,model_slow_1_fl = LSTM_model(df, unseen_df, 500
 
 pred_slow_5,history_slow_5 = LSTM_model(data_df_500, unseen_df_500,500,100000,5,32)
 
-# save the model to disk
-filename = 'lstm_model_{}_{}.sav'.format(MAX_LEN, datetime.datetime.today().strftime("%d_%m_%Y_%H_%M_%S"))
-pickle.dump(model, open(filename, 'wb'))
-
-# # Choose the class with higher probability
-y_pred = (pred_slow > 0.5)
-unseen_df_500['predicted'] = y_pred
-
-# Create the performance report
-print(classification_report(unseen_df_500['label'], unseen_df_500['predicted']))
-
-
-#1536s 26ms/step - loss: 0.1685 - accuracy: 0.9366 - val_loss: 0.3577 - val_accuracy: 0.8265
-# Train set
-#   Loss: 0.329
-#   Accuracy: 0.854
-# Test set
-#   Loss: 0.358
-#   Accuracy: 0.827
-
-# X_new prediction performance
-#               precision    recall  f1-score   support
-#            0       0.87      0.92      0.90      1811
-#            1       0.85      0.77      0.81      1067
-#     accuracy                           0.87      2878
-#    macro avg       0.86      0.85      0.85      2878
-# weighted avg       0.87      0.87      0.86      2878
-
-# # # load the model from disk
-# model_name='lstm_model_1000_06_04_2020_11_50_20.pkl'
-# loaded_model = pickle.load(open(model_name, 'rb'))
