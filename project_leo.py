@@ -46,6 +46,7 @@ fake.info()
 
 #count subjects from fake dataset
 sns.countplot(fake.subject)
+plt.clf()
 #explore title
 fake.title.head()
 #explore text
@@ -54,6 +55,7 @@ fake.text.head()
 real.info()
 #count subjects from real dataset
 sns.countplot(real.subject) #only 2 subjects
+plt.clf()
 
 source = []
 new_text = []
@@ -121,16 +123,17 @@ def clean_data(dataframe):
     processed_corpus = []
 
     for i in range(len(dataframe)):
-        text = dataframe['text'][i]
+
+        text = str(dataframe['text'][i])
         #LOWERCASE TEXT
         text = text.lower()
         #REMOVE NUMERICAL DATA AND PUNCTUATION
-        text = re.sub("[^a-zA-Z-ÁÀÂÃâáàãçÉÈÊéèêúùÚÙÕÓÒÔôõóòÍÌíìçÇ]", ' ', text)
+        text = re.sub("[^a-zA-Z-ÁÀÂÃâáàãçÉÈÊéèêúùÚÙÕÓÒÔôõóòÍÌíìçÇ]", ' ', str(text))
         # nfkd_form = unicodedata.normalize('NFKD', text)
         # text = nfkd_form.encode('ascii', 'ignore').decode()
         #REMOVE TAGS
-        text = BeautifulSoup(text).get_text()
-        processed_corpus.append(text)
+        text = BeautifulSoup(str(text)).get_text()
+        processed_corpus.append(str(text))
     return processed_corpus
 
 
@@ -141,10 +144,20 @@ cleaned_documents = clean_data(data_df_500)
 
 update_df(data_df_500, cleaned_documents)
 
+len(df)
+clean_docs_all = clean_data(df)
+update_df(df, clean_docs_all)
+
 #new data to predict on including labels
 cleaned_documents_new=clean_data(unseen_df_500)
 update_df(unseen_df_500,cleaned_documents_new)
 unseen_df_500.insert(2,'predicted',value=None)
+
+len(unseen_df)
+clean_docs_all_new = clean_data(unseen_df)
+update_df(unseen_df, clean_docs_all_new)
+unseen_df
+
 #EMBEDDING size tune
 
 def tokenize_corpus(corpus):
@@ -204,39 +217,33 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
     #     y_train, y_dev = Y[train_indices], Y[val_indices]
 
     # Clear model, and create it
-    #v1
+    #baseline pre-LSTM
     model = Sequential()
+    # # Add an Embedding layer expecting input , and output embedding dimension of size 100 we set at the top
     model.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+    model.add(SpatialDropout1D(0.2))
+    #baseline LSTM
+    # model.add(LSTM(50))
+
+    #100 layer LSTM ( proved to be too computationally expensive and almost double required training time for one epoch)
+    # model.add(LSTM(100, dropout=0.2, recurrent_dropout=0.2))
 
     #v2
-    model.add(SpatialDropout1D(0.2))
-    #model.add(LSTM(100, dropout=0.2, recurrent_dropout=0.2))
     model.add(LSTM(50))
+
     # #v3
-    # # Add an Embedding layer expecting input , and output embedding dimension of size 100 we set at the top
-    # model.add(tf.keras.layers.Embedding(MAX_NB_WORDS,embedding_dim,input_length=X.shape[1]))
-    # model.add(tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(embedding_dim)))
+    # model.add(Embedding(MAX_NB_WORDS,embedding_dim,input_length=X.shape[1]))
+    # model.add(tf.keras.layers.Bidirectional(LSTM(embedding_dim)))
     # # use ReLU in place of tanh function since they are very good alternatives of each other.
-    # model.add(tf.keras.layers.Dense(embedding_dim, activation='relu'))
+    # model.add(Dense(embedding_dim, activation='relu'))
 
-    #output layer
-    # Add a Dense layer with 6 units and softmax activation.When we have multiple outputs, softmax convert outputs layers into a probability distribution.
-
+    #o baseline utput layer
+    # Add a Dense layer with 1 unit and sigmod activation since we only have a binary output we use binary cross-entropy for our loss function
     model.add(Dense(1, activation='sigmoid'))
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     history = model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size,validation_data=(X_dev,y_dev),callbacks=[EarlyStopping(monitor='loss', patience=3, min_delta=0.05)])
 
-    # accuracy_history = history.history['acc']
-    # val_accuracy_history = history.history['val_acc']
-    # print( "Last training accuracy: " + str(accuracy_history[-1]) + ", last validation accuracy: " + str(val_accuracy_history[-1]))
-
-    # save the model to disk
-    # filename = 'lstm_model_{}_{}.pkl'.format(MAX_LEN,datetime.datetime.today().strftime("%d_%m_%Y_%H_%M_%S"))
-    # pickle.dump(model, open(filename, 'wb'))
-    # # # load the model from disk
-    # model_name='lstm_model_1000_06_04_2020_11_50_20.pkl'
-    # loaded_model = pickle.load(open(model_name, 'rb'))
     # evaluate the model
     train_acc = model.evaluate(X_train, y_train, verbose=0)
 
@@ -249,8 +256,11 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
     plt.plot(history.history['val_accuracy'], label='test')
     plt.legend()
     plt.title("{} sample".format(MAX_LEN))
-    plt.show()
-
+    plt.savefig('lstm_model_{}_{}.png'.format(MAX_LEN, datetime.datetime.today().strftime("%d_%m_%Y_%H_%M_%S")))
+    plt.clf()
+    # save the model to disk
+    filename = 'lstm_model_{}_{}.sav'.format(MAX_LEN, datetime.datetime.today().strftime("%d_%m_%Y_%H_%M_%S"))
+    pickle.dump(model, open(filename, 'wb'))
 
     # Change text for numerical ids and pad
     X_new = tokenizer.texts_to_sequences(new_df.text)
@@ -261,18 +271,38 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
 
     # # Choose the class with higher probability
     y_pred = (predicted > 0.5)
-    unseen_df_500['predicted'] = y_pred
+    new_df['predicted'] = y_pred
 
     # Create the performance report
-    print(classification_report(unseen_df_500['label'], unseen_df_500['predicted']))
+    print(classification_report(new_df['label'], new_df['predicted']))
 
-    return predicted, history
+    return predicted, history,model
 
 #with 1000 sample dataset
 # pred=LSTM_model(balanced_train_1000, balanced_test_1000, file_data_new,1000,30000,10,32)
 
 #with 500 sample dataset, parameters for the results presented in the report
-pred_slow,history_slow=LSTM_model(data_df_500, unseen_df_500,500,100000,1,100)
+pred_slow_1,history_slow_1,model_slow_1 = LSTM_model(data_df_500, unseen_df_500,500,100000,1,100)
+pred_slow_BS,history_slow_BS,model_slow_BS = LSTM_model(data_df_500, unseen_df_500,500,100000,10,100)
+pred_slow_100LS,history_slow_100LS,model_slow_100LS = LSTM_model(data_df_500, unseen_df_500,500,100000,10,100)
+pred_slow_25LS,history_slow_25LS,model_slow_25LS = LSTM_model(data_df_500, unseen_df_500,500,100000,10,100)
+
+pred_slow_1_fl,history_slow_1_fl,model_slow_1_fl = LSTM_model(df, unseen_df, 500, 100000,1,100)
+
+pred_slow_5,history_slow_5 = LSTM_model(data_df_500, unseen_df_500,500,100000,5,32)
+
+# save the model to disk
+filename = 'lstm_model_{}_{}.sav'.format(MAX_LEN, datetime.datetime.today().strftime("%d_%m_%Y_%H_%M_%S"))
+pickle.dump(model, open(filename, 'wb'))
+
+# # Choose the class with higher probability
+y_pred = (pred_slow > 0.5)
+unseen_df_500['predicted'] = y_pred
+
+# Create the performance report
+print(classification_report(unseen_df_500['label'], unseen_df_500['predicted']))
+
+
 #1536s 26ms/step - loss: 0.1685 - accuracy: 0.9366 - val_loss: 0.3577 - val_accuracy: 0.8265
 # Train set
 #   Loss: 0.329
@@ -288,3 +318,7 @@ pred_slow,history_slow=LSTM_model(data_df_500, unseen_df_500,500,100000,1,100)
 #     accuracy                           0.87      2878
 #    macro avg       0.86      0.85      0.85      2878
 # weighted avg       0.87      0.87      0.86      2878
+
+# # # load the model from disk
+# model_name='lstm_model_1000_06_04_2020_11_50_20.pkl'
+# loaded_model = pickle.load(open(model_name, 'rb'))
