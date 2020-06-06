@@ -170,6 +170,9 @@ vocabulary = {word for doc in tokenized_corpus for word in doc}
 print("corpora vocab length:{}".format(len(vocabulary)))
 
 
+max_full=max(max(unseen_df['text'].str.split().str.len()),max(df['text'].str.split().str.len()))
+max_500 = max(max(unseen_df_500['text'].str.split().str.len()),max(data_df_500['text'].str.split().str.len()))
+
 oov_tok = '<OOV>'
 trunc_type = 'post'
 padding_type = 'post'
@@ -193,7 +196,6 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
     X = pad_sequences(X, maxlen=MAX_LEN) #max length of texts, used for padding
     print('Shape of data tensor:', X.shape)
     Y = df.label
-
 
     X_train, X_dev, y_train, y_dev = train_test_split(X, Y, test_size=0.01, random_state=random_seed, stratify=Y) #test_size held small as holdout used instead
 
@@ -287,7 +289,12 @@ pred_slow_BS,history_slow_BS,model_slow_BS = LSTM_model(data_df_500, unseen_df_5
 pred_slow_100LS,history_slow_100LS,model_slow_100LS = LSTM_model(data_df_500, unseen_df_500,500,100000,10,100)
 pred_slow_25LS,history_slow_25LS,model_slow_25LS = LSTM_model(data_df_500, unseen_df_500,500,100000,10,100)
 
-pred_slow_1_fl,history_slow_1_fl,model_slow_1_fl = LSTM_model(df, unseen_df, 500, 100000,1,100)
 
-pred_slow_5,history_slow_5 = LSTM_model(data_df_500, unseen_df_500,500,100000,5,32)
+pred_slow_1_fl,history_slow_1_fl,model_slow_1_fl = LSTM_model(df, unseen_df, max_full, 100000,1,100)
+#to_run
+pred_slow_25LS_fl,history_slow_25LS_fl,model_slow_25LS_fl = LSTM_model(df, unseen_df, max_full, 100000,10,100)
+
+pred_slow_BS_fl,history_slow_BS_fl,model_slow_BS_fl = LSTM_model(df, unseen_df, max_full, 100000,10,100)
+pred_slow_32_fl,history_slow_32_fl,model_slow_32_fl = LSTM_model(df, unseen_df, max_full, 100000,10,32)
+
 
