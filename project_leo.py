@@ -94,6 +94,8 @@ def split_strings_n_words(df, n):
     new_df.rename(columns={"index":"text",0:"label"}, inplace=True)
     return new_df
 
+#text="Norwegian police had just under 10,000 armed missions in 2019, but used firearms in only 13 of them. In 85 cases, actual use of weapons was threatened, reports the Directorate of Police. “The statistics for the last ten years show that Norwegian police are very restrained with actual weapons use, even though the police are armed many times over the course of a year,” says Emergency Director Tone Vangen. The police in Norway usually do not carry weapons, but have them stored in the patrol cars, so that they can arm in emergency situations. In 2019, five people were injured and one person died in connection with police using weapons."
+#text_split = split_strings_n_words(text,500)
 data_df_500 = split_strings_n_words(df,500)
 unseen_df_500=split_strings_n_words(unseen_df,500)
 
@@ -167,22 +169,28 @@ tf.random.set_seed(random_seed)
 random.seed(random_seed)
 np.random.seed(random_seed)
 
-
-def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
-
-    tokenizer = Tokenizer(num_words=MAX_NB_WORDS, lower=True) # The maximum number of words to be used. (most frequent) or could use whole vocab size
+def processing(df,new_df,MAX_LEN, MAX_NB_WORDS):
+    tokenizer = Tokenizer(num_words=MAX_NB_WORDS,
+                          lower=True)  # The maximum number of words to be used. (most frequent) or could use whole vocab size
     tokenizer.fit_on_texts(df.text.values)
     word_index = tokenizer.word_index
     print('Found %s unique tokens.' % len(word_index))
 
     # Change text for numerical ids and pad
     X = tokenizer.texts_to_sequences(df.text)
-    X = pad_sequences(X, maxlen=MAX_LEN) #max length of texts, used for padding
+    X = pad_sequences(X, maxlen=MAX_LEN)  # max length of texts, used for padding
     print('Shape of data tensor:', X.shape)
     Y = df.label
 
+    X_train, X_dev, y_train, y_dev = train_test_split(X, Y, test_size=0.01, random_state=random_seed,
+                                                      stratify=Y)  # test_size held small as holdout used instead
+    # Change text for numerical ids and pad
+    X_new = tokenizer.texts_to_sequences(new_df.text)
+    X_new = pad_sequences(X_new, maxlen=MAX_LEN)
+    return X_train, X_dev,y_train, y_dev,MAX_NB_WORDS,MAX_LEN, X, X_new
 
-    X_train, X_dev, y_train, y_dev = train_test_split(X, Y, test_size=0.01, random_state=random_seed, stratify=Y) #test_size held small as holdout used instead
+def run_model(MAX_LEN,epochs,batch_size,model, X_train, X_dev, y_train, y_dev,X_new):
+
 
     # # Change text for numerical ids and pad
     # X_test = tokenizer.texts_to_sequences(test_df.text)
@@ -203,27 +211,6 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
     #     X_train, X_dev = X[train_indices], X[val_indices]
     #     y_train, y_dev = Y[train_indices], Y[val_indices]
 
-    # Clear model, and create it
-    #v1
-    model = Sequential()
-    model.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
-
-    #v2
-    model.add(SpatialDropout1D(0.2))
-    #model.add(LSTM(100, dropout=0.2, recurrent_dropout=0.2))
-    model.add(LSTM(50))
-    # #v3
-    # # Add an Embedding layer expecting input , and output embedding dimension of size 100 we set at the top
-    # model.add(tf.keras.layers.Embedding(MAX_NB_WORDS,embedding_dim,input_length=X.shape[1]))
-    # model.add(tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(embedding_dim)))
-    # # use ReLU in place of tanh function since they are very good alternatives of each other.
-    # model.add(tf.keras.layers.Dense(embedding_dim, activation='relu'))
-
-    #output layer
-    # Add a Dense layer with 6 units and softmax activation.When we have multiple outputs, softmax convert outputs layers into a probability distribution.
-
-    model.add(Dense(1, activation='sigmoid'))
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     history = model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size,validation_data=(X_dev,y_dev),callbacks=[EarlyStopping(monitor='loss', patience=3, min_delta=0.05)])
 
@@ -252,9 +239,7 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
     plt.show()
 
 
-    # Change text for numerical ids and pad
-    X_new = tokenizer.texts_to_sequences(new_df.text)
-    X_new = pad_sequences(X_new, maxlen=MAX_LEN)
+
 
     # Use the model to predict on new data
     predicted = model.predict(X_new)
@@ -268,11 +253,65 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
 
     return predicted, history
 
+X_train, X_dev,y_train, y_dev,MAX_NB_WORDS,MAX_LEN,X, X_new= processing(data_df_500, unseen_df_500,500,100000)
+# Clear model, and create it
+#v1
+modelLSTM = Sequential()
+modelLSTM.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+#v2
+modelLSTM.add(SpatialDropout1D(0.2))
+#model.add(LSTM(100, dropout=0.2, recurrent_dropout=0.2))
+modelLSTM.add(LSTM(50))
+# #v3
+# # Add an Embedding layer expecting input , and output embedding dimension of size 100 we set at the top
+# model.add(tf.keras.layers.Embedding(MAX_NB_WORDS,embedding_dim,input_length=X.shape[1]))
+# model.add(tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(embedding_dim)))
+# # use ReLU in place of tanh function since they are very good alternatives of each other.
+# model.add(tf.keras.layers.Dense(embedding_dim, activation='relu'))
+
+#output layer
+# Add a Dense layer with 6 units and softmax activation.When we have multiple outputs, softmax convert outputs layers into a probability distribution.
+
+modelLSTM.add(Dense(1, activation='sigmoid'))
+modelLSTM.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+
+
+from keras.layers import SimpleRNN
+model_simple = Sequential()
+model_simple.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+model_simple.add(SimpleRNN(50))
+model_simple.add(Dense(1, activation='sigmoid'))
+model_simple.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+
+from keras.layers import GRU
+modelsimple = Sequential()
+modelsimple.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+modelsimple.add(GRU(50))
+modelsimple.add(Dense(1, activation='sigmoid'))
+modelsimple.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+from keras.layers import Conv1D, MaxPool1D, GlobalMaxPooling1D
+modelconv = Sequential()
+modelconv.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+modelconv.add(Conv1D(32,5,activation='relu'))
+modelconv.add(MaxPool1D(3))
+modelconv.add(Conv1D(32,5,activation='relu'))
+modelconv.add(MaxPool1D(3))
+modelconv.add(Conv1D(32,5,activation='relu'))
+modelconv.add(GlobalMaxPooling1D())
+modelconv.add(Dense(1, activation='sigmoid'))
+modelconv.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
 #with 1000 sample dataset
 # pred=LSTM_model(balanced_train_1000, balanced_test_1000, file_data_new,1000,30000,10,32)
-
 #with 500 sample dataset, parameters for the results presented in the report
-pred_slow,history_slow=LSTM_model(data_df_500, unseen_df_500,500,100000,1,100)
+pred_slow,history_slow=run_model(MAX_LEN,1,512,modelLSTM, X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,1,512,modelsimple, X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,1,512,model_simple, X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,1,512,modelconv, X_train, X_dev, y_train, y_dev,X_new)
+
 #1536s 26ms/step - loss: 0.1685 - accuracy: 0.9366 - val_loss: 0.3577 - val_accuracy: 0.8265
 # Train set
 #   Loss: 0.329
