@@ -286,11 +286,11 @@ model_simple.compile(loss='binary_crossentropy', optimizer='adam', metrics=['acc
 
 
 from keras.layers import GRU
-modelsimple = Sequential()
-modelsimple.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
-modelsimple.add(GRU(50))
-modelsimple.add(Dense(1, activation='sigmoid'))
-modelsimple.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+modelGRU = Sequential()
+modelGRU.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+modelGRU.add(GRU(50))
+modelGRU.add(Dense(1, activation='sigmoid'))
+modelGRU.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 from keras.layers import Conv1D, MaxPool1D, GlobalMaxPooling1D
 modelconv = Sequential()
@@ -308,7 +308,7 @@ modelconv.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accura
 # pred=LSTM_model(balanced_train_1000, balanced_test_1000, file_data_new,1000,30000,10,32)
 #with 500 sample dataset, parameters for the results presented in the report
 pred_slow,history_slow=run_model(MAX_LEN,1,512,modelLSTM, X_train, X_dev, y_train, y_dev,X_new)
-pred_slow,history_slow=run_model(MAX_LEN,1,512,modelsimple, X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,1,512,modelGRU, X_train, X_dev, y_train, y_dev,X_new)
 pred_slow,history_slow=run_model(MAX_LEN,1,512,model_simple, X_train, X_dev, y_train, y_dev,X_new)
 pred_slow,history_slow=run_model(MAX_LEN,1,512,modelconv, X_train, X_dev, y_train, y_dev,X_new)
 
