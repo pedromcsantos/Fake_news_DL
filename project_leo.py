@@ -80,7 +80,6 @@ df = pd.concat([real, fake])
 #Drop columns
 df.drop(["date","source","subject","title"], axis=1, inplace=True)
 
-df.count()
 # split into data to train and into "unseen" data
 data_df=df.sample(frac=0.8,random_state=100) #random state is a seed value
 unseen_df=df.drop(data_df.index).reset_index(drop=True)
@@ -96,7 +95,7 @@ def split_strings_n_words(df, n):
     new_df.rename(columns={"index":"text",0:"label"}, inplace=True)
     return new_df
 
-data_df_500 = split_strings_n_words(df,500)
+data_df_500 = split_strings_n_words(data_df,500)
 unseen_df_500=split_strings_n_words(unseen_df,500)
 
 #initialise preprocessing parameters
@@ -124,7 +123,7 @@ def clean_data(dataframe):
 
     for i in range(len(dataframe)):
 
-        text = str(dataframe['text'][i])
+        text = str(dataframe['text'].loc[i])
         #LOWERCASE TEXT
         text = text.lower()
         #REMOVE NUMERICAL DATA AND PUNCTUATION
@@ -136,6 +135,7 @@ def clean_data(dataframe):
         processed_corpus.append(str(text))
     return processed_corpus
 
+len(df)
 
 def update_df(dataframe, cleaned_documents):
     dataframe['text'] = cleaned_documents
@@ -144,9 +144,9 @@ cleaned_documents = clean_data(data_df_500)
 
 update_df(data_df_500, cleaned_documents)
 
-len(df)
-clean_docs_all = clean_data(df)
-update_df(df, clean_docs_all)
+len(data_df)
+clean_docs_all = clean_data(data_df)
+update_df(data_df, clean_docs_all)
 
 #new data to predict on including labels
 cleaned_documents_new=clean_data(unseen_df_500)
@@ -156,7 +156,7 @@ unseen_df_500.insert(2,'predicted',value=None)
 len(unseen_df)
 clean_docs_all_new = clean_data(unseen_df)
 update_df(unseen_df, clean_docs_all_new)
-unseen_df
+unseen_df.insert(2,'predicted',value=None)
 
 #EMBEDDING size tune
 
@@ -170,7 +170,7 @@ vocabulary = {word for doc in tokenized_corpus for word in doc}
 print("corpora vocab length:{}".format(len(vocabulary)))
 
 
-max_full=max(max(unseen_df['text'].str.split().str.len()),max(df['text'].str.split().str.len()))
+max_full=max(max(unseen_df['text'].str.split().str.len()),max(data_df['text'].str.split().str.len()))
 max_500 = max(max(unseen_df_500['text'].str.split().str.len()),max(data_df_500['text'].str.split().str.len()))
 
 oov_tok = '<OOV>'
