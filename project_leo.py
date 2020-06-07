@@ -96,7 +96,7 @@ def split_strings_n_words(df, n):
 
 #text="Norwegian police had just under 10,000 armed missions in 2019, but used firearms in only 13 of them. In 85 cases, actual use of weapons was threatened, reports the Directorate of Police. “The statistics for the last ten years show that Norwegian police are very restrained with actual weapons use, even though the police are armed many times over the course of a year,” says Emergency Director Tone Vangen. The police in Norway usually do not carry weapons, but have them stored in the patrol cars, so that they can arm in emergency situations. In 2019, five people were injured and one person died in connection with police using weapons."
 #text_split = split_strings_n_words(text,500)
-data_df_500 = split_strings_n_words(df,500)
+data_df_500 = split_strings_n_words(data_df,500)
 unseen_df_500=split_strings_n_words(unseen_df,500)
 
 #initialise preprocessing parameters
@@ -190,7 +190,7 @@ def processing(df,new_df,MAX_LEN, MAX_NB_WORDS):
     return X_train, X_dev,y_train, y_dev,MAX_NB_WORDS,MAX_LEN, X, X_new
 
 def run_model(MAX_LEN,epochs,batch_size,model, X_train, X_dev, y_train, y_dev,X_new):
-
+    print("epochs: ",epochs, "batch size: ",batch_size)
 
     # # Change text for numerical ids and pad
     # X_test = tokenizer.texts_to_sequences(test_df.text)
@@ -276,41 +276,69 @@ modelLSTM.add(Dense(1, activation='sigmoid'))
 modelLSTM.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 
+def mod_simple(size):
+    from keras.layers import SimpleRNN
+    model_simple = Sequential()
+    model_simple.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+    model_simple.add(SimpleRNN(size))
+    model_simple.add(Dense(1, activation='sigmoid'))
+    model_simple.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return model_simple
 
-from keras.layers import SimpleRNN
-model_simple = Sequential()
-model_simple.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
-model_simple.add(SimpleRNN(50))
-model_simple.add(Dense(1, activation='sigmoid'))
-model_simple.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-
-
-from keras.layers import GRU
-modelGRU = Sequential()
-modelGRU.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
-modelGRU.add(GRU(50))
-modelGRU.add(Dense(1, activation='sigmoid'))
-modelGRU.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-
-from keras.layers import Conv1D, MaxPool1D, GlobalMaxPooling1D
-modelconv = Sequential()
-modelconv.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
-modelconv.add(Conv1D(32,5,activation='relu'))
-modelconv.add(MaxPool1D(3))
-modelconv.add(Conv1D(32,5,activation='relu'))
-modelconv.add(MaxPool1D(3))
-modelconv.add(Conv1D(32,5,activation='relu'))
-modelconv.add(GlobalMaxPooling1D())
-modelconv.add(Dense(1, activation='sigmoid'))
-modelconv.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-
+def mod_GRU(size):
+    from keras.layers import GRU
+    modelGRU = Sequential()
+    modelGRU.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+    modelGRU.add(GRU(size))
+    modelGRU.add(Dense(1, activation='sigmoid'))
+    modelGRU.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return modelGRU
+def mod_conv(conv):
+    from keras.layers import Conv1D, MaxPool1D, GlobalMaxPooling1D
+    modelconv = Sequential()
+    modelconv.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+    modelconv.add(Conv1D(conv,5,activation='relu'))
+    modelconv.add(MaxPool1D(3))
+    modelconv.add(Conv1D(conv,5,activation='relu'))
+    modelconv.add(MaxPool1D(3))
+    modelconv.add(Conv1D(conv,5,activation='relu'))
+    modelconv.add(GlobalMaxPooling1D())
+    modelconv.add(Dense(1, activation='sigmoid'))
+    modelconv.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return modelconv
 #with 1000 sample dataset
 # pred=LSTM_model(balanced_train_1000, balanced_test_1000, file_data_new,1000,30000,10,32)
 #with 500 sample dataset, parameters for the results presented in the report
-pred_slow,history_slow=run_model(MAX_LEN,1,512,modelLSTM, X_train, X_dev, y_train, y_dev,X_new)
-pred_slow,history_slow=run_model(MAX_LEN,1,512,modelGRU, X_train, X_dev, y_train, y_dev,X_new)
-pred_slow,history_slow=run_model(MAX_LEN,1,512,model_simple, X_train, X_dev, y_train, y_dev,X_new)
-pred_slow,history_slow=run_model(MAX_LEN,1,512,modelconv, X_train, X_dev, y_train, y_dev,X_new)
+print("model: SimpleRNN")
+print("size: 50")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_GRU(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,10,32,mod_GRU(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,1,100,mod_GRU(50), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 25")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_GRU(25), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 100")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_GRU(100), X_train, X_dev, y_train, y_dev,X_new)
+
+print("model: SimpleRNN")
+print("size: 50")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_simple(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,10,32,mod_simple(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,1,100,mod_simple(50), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 25")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_simple(25), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 100")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_simple(100), X_train, X_dev, y_train, y_dev,X_new)
+
+
+print("model: Conv1D")
+print("size: 50")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_conv(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,10,32,mod_conv(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,1,100,mod_conv(50), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 25")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_conv(25), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 100")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_conv(100), X_train, X_dev, y_train, y_dev,X_new)
 
 #1536s 26ms/step - loss: 0.1685 - accuracy: 0.9366 - val_loss: 0.3577 - val_accuracy: 0.8265
 # Train set
