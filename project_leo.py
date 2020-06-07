@@ -280,6 +280,7 @@ def mod_simple(size):
     from keras.layers import SimpleRNN
     model_simple = Sequential()
     model_simple.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+    model_simple.add(SpatialDropout1D(0.2))
     model_simple.add(SimpleRNN(size))
     model_simple.add(Dense(1, activation='sigmoid'))
     model_simple.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
@@ -289,6 +290,7 @@ def mod_GRU(size):
     from keras.layers import GRU
     modelGRU = Sequential()
     modelGRU.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+    modelGRU.add(SpatialDropout1D(0.2))
     modelGRU.add(GRU(size))
     modelGRU.add(Dense(1, activation='sigmoid'))
     modelGRU.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
