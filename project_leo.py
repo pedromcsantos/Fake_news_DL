@@ -94,10 +94,9 @@ def split_strings_n_words(df, n):
     new_df.rename(columns={"index":"text",0:"label"}, inplace=True)
     return new_df
 
-#text="Norwegian police had just under 10,000 armed missions in 2019, but used firearms in only 13 of them. In 85 cases, actual use of weapons was threatened, reports the Directorate of Police. “The statistics for the last ten years show that Norwegian police are very restrained with actual weapons use, even though the police are armed many times over the course of a year,” says Emergency Director Tone Vangen. The police in Norway usually do not carry weapons, but have them stored in the patrol cars, so that they can arm in emergency situations. In 2019, five people were injured and one person died in connection with police using weapons."
-#text_split = split_strings_n_words(text,500)
-data_df_500 = split_strings_n_words(data_df,500)
-unseen_df_500=split_strings_n_words(unseen_df,500)
+
+data_df_500 = split_strings_n_words(data_df,1000)
+unseen_df_500=split_strings_n_words(unseen_df,1000)
 
 #initialise preprocessing parameters
 stop = set(stopwords.words('english'))
