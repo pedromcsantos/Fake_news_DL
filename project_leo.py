@@ -307,6 +307,20 @@ def mod_conv(conv):
     modelconv.add(Dense(1, activation='sigmoid'))
     modelconv.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     return modelconv
+def mod_dense(size):
+    from keras.layers import Dense, Dropout, Flatten
+    modeldense = Sequential()
+    modeldense.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+    modeldense.add(Flatten())
+    modeldense.add(Dense(size,activation='relu'))
+    modeldense.add(Dropout(0.2))
+    modeldense.add(Dense(size,activation='relu'))
+    modeldense.add(Dropout(0.2))
+    modeldense.add(Dense(size,activation='relu'))
+    modeldense.add(Dropout(0.2))
+    modeldense.add(Dense(1, activation='sigmoid'))
+    modeldense.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return modeldense
 #with 1000 sample dataset
 # pred=LSTM_model(balanced_train_1000, balanced_test_1000, file_data_new,1000,30000,10,32)
 #with 500 sample dataset, parameters for the results presented in the report
@@ -340,6 +354,17 @@ print("size: 25")
 pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_conv(25), X_train, X_dev, y_train, y_dev,X_new)
 print("size: 100")
 pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_conv(100), X_train, X_dev, y_train, y_dev,X_new)
+
+print("model: Dense")
+print("size: 50")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_dense(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,10,32,mod_dense(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,1,100,mod_dense(50), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 25")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_dense(25), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 100")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_dense(100), X_train, X_dev, y_train, y_dev,X_new)
+
 
 #1536s 26ms/step - loss: 0.1685 - accuracy: 0.9366 - val_loss: 0.3577 - val_accuracy: 0.8265
 # Train set
