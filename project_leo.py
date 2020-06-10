@@ -67,7 +67,6 @@ for row in real.text:
     except:
          new_text.append(record[0])
 
-
 real["source"] = source
 real["text"] = new_text
 
@@ -95,6 +94,10 @@ def split_strings_n_words(df, n):
     new_df.rename(columns={"index":"text",0:"label"}, inplace=True)
     return new_df
 
+
+data_df_1000 = split_strings_n_words(data_df,1000)
+unseen_df_1000=split_strings_n_words(unseen_df,1000)
+
 data_df_500 = split_strings_n_words(data_df,500)
 unseen_df_500=split_strings_n_words(unseen_df,500)
 
@@ -104,47 +107,34 @@ exclude = set(string.punctuation)
 lemma = WordNetLemmatizer()
 stemmer = SnowballStemmer('english')
 
-# def preprocess_dataset(df):
-#     tokenizer = Tokenizer()
-#     tokenizer.fit_on_texts(df.text)
-#     sequence_text = tokenizer.texts_to_sequences(df.text)
-#     padded_text = pad_sequences(sequence_text, maxlen=None)
-#     targets = df.label
-#     tf_idf = TfidfVectorizer(max_features=10000,stop_words={'english'})
-#     tf_idf.fit(df.text)
-#     tf_idf_vec = tf_idf.transform(df.text)
-#
-#     return padded_text, targets, tf_idf, tf_idf_vec
-
 #basic preprocessing function for NN
 def clean_data(dataframe):
-
+  
     processed_corpus = []
-
     for i in range(len(dataframe)):
-
         text = str(dataframe['text'].loc[i])
         #LOWERCASE TEXT
         text = text.lower()
         #REMOVE NUMERICAL DATA AND PUNCTUATION
         text = re.sub("[^a-zA-Z-ÁÀÂÃâáàãçÉÈÊéèêúùÚÙÕÓÒÔôõóòÍÌíìçÇ]", ' ', str(text))
-        # nfkd_form = unicodedata.normalize('NFKD', text)
-        # text = nfkd_form.encode('ascii', 'ignore').decode()
         #REMOVE TAGS
         text = BeautifulSoup(str(text)).get_text()
         processed_corpus.append(str(text))
+        
     return processed_corpus
 
-len(df)
 
 def update_df(dataframe, cleaned_documents):
     dataframe['text'] = cleaned_documents
 
-cleaned_documents = clean_data(data_df_500)
+#preprocess train data
 
+cleaned_documents = clean_data(data_df_500)
 update_df(data_df_500, cleaned_documents)
 
-len(data_df)
+cleaned_documents_1000 = clean_data(data_df_1000)
+update_df(data_df_1000, cleaned_documents_1000)
+
 clean_docs_all = clean_data(data_df)
 update_df(data_df, clean_docs_all)
 
@@ -153,17 +143,18 @@ cleaned_documents_new=clean_data(unseen_df_500)
 update_df(unseen_df_500,cleaned_documents_new)
 unseen_df_500.insert(2,'predicted',value=None)
 
-len(unseen_df)
+cleaned_documents_new_1000=clean_data(unseen_df_1000)
+update_df(unseen_df_1000,cleaned_documents_new_1000)
+unseen_df_1000.insert(2,'predicted',value=None)
+
 clean_docs_all_new = clean_data(unseen_df)
 update_df(unseen_df, clean_docs_all_new)
 unseen_df.insert(2,'predicted',value=None)
 
 #EMBEDDING size tune
-
 def tokenize_corpus(corpus):
     tokens = [x.split() for x in corpus]
     return tokens
-
 
 tokenized_corpus = tokenize_corpus(data_df_500.text)
 vocabulary = {word for doc in tokenized_corpus for word in doc}
@@ -171,7 +162,6 @@ print("corpora vocab length:{}".format(len(vocabulary)))
 
 
 max_full=max(max(unseen_df['text'].str.split().str.len()),max(data_df['text'].str.split().str.len()))
-max_500 = max(max(unseen_df_500['text'].str.split().str.len()),max(data_df_500['text'].str.split().str.len()))
 
 oov_tok = '<OOV>'
 trunc_type = 'post'
@@ -183,40 +173,29 @@ tf.random.set_seed(random_seed)
 random.seed(random_seed)
 np.random.seed(random_seed)
 
-
-def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
-
-    tokenizer = Tokenizer(num_words=MAX_NB_WORDS, lower=True) # The maximum number of words to be used. (most frequent) or could use whole vocab size
+def processing(df,new_df,MAX_LEN, MAX_NB_WORDS):
+    tokenizer = Tokenizer(num_words=MAX_NB_WORDS,lower=True)  # The maximum number of words to be used. (most frequent) or could use whole vocab size
     tokenizer.fit_on_texts(df.text.values)
     word_index = tokenizer.word_index
     print('Found %s unique tokens.' % len(word_index))
 
     # Change text for numerical ids and pad
     X = tokenizer.texts_to_sequences(df.text)
-    X = pad_sequences(X, maxlen=MAX_LEN) #max length of texts, used for padding
+    X = pad_sequences(X, maxlen=MAX_LEN)  # max length of texts, used for padding
     print('Shape of data tensor:', X.shape)
     Y = df.label
 
-    X_train, X_dev, y_train, y_dev = train_test_split(X, Y, test_size=0.01, random_state=random_seed, stratify=Y) #test_size held small as holdout used instead
+    X_train, X_dev, y_train, y_dev = train_test_split(X, Y, test_size=0.01, random_state=random_seed,
+                                                      stratify=Y)  # test_size held small as holdout used instead
+    # Change text for numerical ids and pad
+    X_new = tokenizer.texts_to_sequences(new_df.text)
+    X_new = pad_sequences(X_new, maxlen=MAX_LEN)
+    return X_train, X_dev,y_train, y_dev,MAX_NB_WORDS,MAX_LEN, X, X_new
 
-    # # Change text for numerical ids and pad
-    # X_test = tokenizer.texts_to_sequences(test_df.text)
-    # X_test = pad_sequences(X_test, maxlen=MAX_LEN)
-    # print(X_train.shape, y_train.shape)
-    # print(X_dev.shape, y_dev.shape)
+def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
 
-    # kfold_splits=10
-    # # # Instantiate the cross validator
-    # skf = StratifiedKFold(n_splits=kfold_splits, shuffle=True,random_state=7)
-    #
-    # # # Loop through the indices the split() method returns
-    #
-    # for index, (train_indices, val_indices) in enumerate(skf.split(X, Y.values.argmax(1))):
-    #     print
-    #     "Training on fold " + str(index + 1) + "/10..."
-    #     # Generate batches from indices
-    #     X_train, X_dev = X[train_indices], X[val_indices]
-    #     y_train, y_dev = Y[train_indices], Y[val_indices]
+    #with 500 sample dataset, parameters for the results presented in the report
+    X_train, X_dev,y_train, y_dev,MAX_NB_WORDS,MAX_LEN,X, X_new= processing(df, df_new,MAX_LEN,MAX_NB_WORDS)
 
     # Clear model, and create it
     #baseline pre-LSTM
@@ -224,22 +203,17 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
     # # Add an Embedding layer expecting input , and output embedding dimension of size 100 we set at the top
     model.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
     model.add(SpatialDropout1D(0.2))
-    #baseline LSTM
-    # model.add(LSTM(50))
-
-    #100 layer LSTM ( proved to be too computationally expensive and almost double required training time for one epoch)
-    # model.add(LSTM(100, dropout=0.2, recurrent_dropout=0.2))
-
-    #v2
+    
+    #baseline LSTM (50 neurons)
     model.add(LSTM(50))
 
-    # #v3
-    # model.add(Embedding(MAX_NB_WORDS,embedding_dim,input_length=X.shape[1]))
-    # model.add(tf.keras.layers.Bidirectional(LSTM(embedding_dim)))
-    # # use ReLU in place of tanh function since they are very good alternatives of each other.
-    # model.add(Dense(embedding_dim, activation='relu'))
+    #100 neuron LSTM ( proved to be too computationally expensive and almost double required training time for one epoch)
+    # model.add(LSTM(100, dropout=0.2, recurrent_dropout=0.2))
 
-    #o baseline utput layer
+    # 25 neuron
+    # model.add(LSTM(25))
+
+    #to baseline output layer
     # Add a Dense layer with 1 unit and sigmod activation since we only have a binary output we use binary cross-entropy for our loss function
     model.add(Dense(1, activation='sigmoid'))
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
@@ -247,6 +221,52 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
     history = model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size,validation_data=(X_dev,y_dev),callbacks=[EarlyStopping(monitor='loss', patience=3, min_delta=0.05)])
 
     # evaluate the model
+    train_acc = model.evaluate(X_train, y_train, verbose=0)
+    test_acc = model.evaluate(X_dev, y_dev, verbose=0)
+    print('Train set\n  Loss: {:0.3f}\n  Accuracy: {:0.3f}'.format(train_acc[0],train_acc[1]))
+    print('Test set\n  Loss: {:0.3f}\n  Accuracy: {:0.3f}'.format(test_acc[0],test_acc[1]))
+
+    # plot training history
+    plt.plot(history.history['accuracy'], label='train')
+    plt.plot(history.history['val_accuracy'], label='test')
+    plt.legend()
+    plt.title("{} sample".format(MAX_LEN))
+    plt.savefig('lstm_model_{}_{}.png'.format(MAX_LEN, datetime.datetime.today().strftime("%d_%m_%Y_%H_%M_%S")))
+    # save the model to disk
+    filename = 'lstm_model_{}_{}.sav'.format(MAX_LEN, datetime.datetime.today().strftime("%d_%m_%Y_%H_%M_%S"))
+    pickle.dump(model, open(filename, 'wb'))
+
+    # Use the model to predict on new data
+    predicted = model.predict(X_new)
+
+    # # Choose the class with higher probability
+    y_pred = (predicted > 0.5)
+    new_df['predicted'] = y_pred
+
+    # Create the performance report
+    print(classification_report(new_df['label'], new_df['predicted']))
+    return predicted, history,model
+
+#all LSTM model runs with 500-word-split
+pred_slow_1,history_slow_1,model_slow_1 = LSTM_model(data_df_500, unseen_df_500,500,100000,1,100)
+pred_slow_BS,history_slow_BS,model_slow_BS = LSTM_model(data_df_500, unseen_df_500,500,100000,10,100)
+pred_slow_100LS,history_slow_100LS,model_slow_100LS = LSTM_model(data_df_500, unseen_df_500,500,100000,10,100)
+pred_slow_25LS,history_slow_25LS,model_slow_25LS = LSTM_model(data_df_500, unseen_df_500,500,100000,10,100)
+
+#all LSTM model runs with 1000-word-split
+pred_slow_1,history_slow_1,model_slow_1 = LSTM_model(data_df_1000, unseen_df_1000,1000,100000,1,100)
+pred_slow_BS,history_slow_BS,model_slow_BS = LSTM_model(data_df_1000, unseen_df_1000,1000,100000,10,100)
+pred_slow_100LS,history_slow_100LS,model_slow_100LS = LSTM_model(data_df_1000, unseen_df_1000,1000,100000,10,100)
+pred_slow_25LS,history_slow_25LS,model_slow_25LS = LSTM_model(data_df_1000, unseen_df_1000,1000,100000,10,100)
+
+#predicted 6 hours to run for full dataset
+pred_slow_1_fl,history_slow_1_fl,model_slow_1_fl = LSTM_model(df, unseen_df, max_full, 100000,1,100)
+
+
+def run_model(MAX_LEN,epochs,batch_size,model, X_train, X_dev, y_train, y_dev,X_new):
+    print("epochs: ",epochs, "batch size: ",batch_size)
+    history = model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size,validation_data=(X_dev,y_dev),callbacks=[EarlyStopping(monitor='loss', patience=3, min_delta=0.05)])
+
     train_acc = model.evaluate(X_train, y_train, verbose=0)
 
     test_acc = model.evaluate(X_dev, y_dev, verbose=0)
@@ -258,43 +278,124 @@ def LSTM_model(df,new_df,MAX_LEN,MAX_NB_WORDS,epochs,batch_size):
     plt.plot(history.history['val_accuracy'], label='test')
     plt.legend()
     plt.title("{} sample".format(MAX_LEN))
-    plt.savefig('lstm_model_{}_{}.png'.format(MAX_LEN, datetime.datetime.today().strftime("%d_%m_%Y_%H_%M_%S")))
-    plt.clf()
-    # save the model to disk
-    filename = 'lstm_model_{}_{}.sav'.format(MAX_LEN, datetime.datetime.today().strftime("%d_%m_%Y_%H_%M_%S"))
-    pickle.dump(model, open(filename, 'wb'))
-
-    # Change text for numerical ids and pad
-    X_new = tokenizer.texts_to_sequences(new_df.text)
-    X_new = pad_sequences(X_new, maxlen=MAX_LEN)
+    plt.show()
 
     # Use the model to predict on new data
     predicted = model.predict(X_new)
 
     # # Choose the class with higher probability
     y_pred = (predicted > 0.5)
-    new_df['predicted'] = y_pred
+    unseen_df_500['predicted'] = y_pred
 
     # Create the performance report
-    print(classification_report(new_df['label'], new_df['predicted']))
+    print(classification_report(unseen_df_500['label'], unseen_df_500['predicted']))
 
-    return predicted, history,model
+    return predicted, history
 
-#with 1000 sample dataset
-# pred=LSTM_model(balanced_train_1000, balanced_test_1000, file_data_new,1000,30000,10,32)
+def mod_simple(size):
+    from keras.layers import SimpleRNN
+    model_simple = Sequential()
+    model_simple.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+    model_simple.add(SpatialDropout1D(0.2))
+    model_simple.add(SimpleRNN(size))
+    model_simple.add(Dense(1, activation='sigmoid'))
+    model_simple.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return model_simple
+
+  
+def mod_GRU(size):
+    from keras.layers import GRU
+    modelGRU = Sequential()
+    modelGRU.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+    modelGRU.add(SpatialDropout1D(0.2))
+    modelGRU.add(GRU(size))
+    modelGRU.add(Dense(1, activation='sigmoid'))
+    modelGRU.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return modelGRU
+  
+  
+def mod_conv(conv):
+    from keras.layers import Conv1D, MaxPool1D, GlobalMaxPooling1D
+    modelconv = Sequential()
+    modelconv.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+    modelconv.add(Conv1D(conv,5,activation='relu'))
+    modelconv.add(MaxPool1D(3))
+    modelconv.add(Conv1D(conv,5,activation='relu'))
+    modelconv.add(MaxPool1D(3))
+    modelconv.add(Conv1D(conv,5,activation='relu'))
+    modelconv.add(GlobalMaxPooling1D())
+    modelconv.add(Dense(1, activation='sigmoid'))
+    modelconv.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return modelconv
+  
+  
+def mod_dense(size):
+    from keras.layers import Dense, Dropout, Flatten
+    modeldense = Sequential()
+    modeldense.add(Embedding(input_dim=MAX_NB_WORDS, output_dim=100, input_length=X.shape[1]))
+    modeldense.add(Flatten())
+    modeldense.add(Dense(size,activation='relu'))
+    modeldense.add(Dropout(0.2))
+    modeldense.add(Dense(size,activation='relu'))
+    modeldense.add(Dropout(0.2))
+    modeldense.add(Dense(size,activation='relu'))
+    modeldense.add(Dropout(0.2))
+    modeldense.add(Dense(1, activation='sigmoid'))
+    modeldense.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return modeldense
 
 #with 500 sample dataset, parameters for the results presented in the report
-pred_slow_1,history_slow_1,model_slow_1 = LSTM_model(data_df_500, unseen_df_500,500,100000,1,100)
-pred_slow_BS,history_slow_BS,model_slow_BS = LSTM_model(data_df_500, unseen_df_500,500,100000,10,100)
-pred_slow_100LS,history_slow_100LS,model_slow_100LS = LSTM_model(data_df_500, unseen_df_500,500,100000,10,100)
-pred_slow_25LS,history_slow_25LS,model_slow_25LS = LSTM_model(data_df_500, unseen_df_500,500,100000,10,100)
+X_train, X_dev,y_train, y_dev,MAX_NB_WORDS,MAX_LEN,X, X_new= processing(data_df_500, unseen_df_500,500,100000)
 
+print("model: SimpleRNN")
+print("size: 50")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_GRU(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,10,32,mod_GRU(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,1,100,mod_GRU(50), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 25")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_GRU(25), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 100")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_GRU(100), X_train, X_dev, y_train, y_dev,X_new)
 
-pred_slow_1_fl,history_slow_1_fl,model_slow_1_fl = LSTM_model(df, unseen_df, max_full, 100000,1,100)
-#to_run
-pred_slow_25LS_fl,history_slow_25LS_fl,model_slow_25LS_fl = LSTM_model(df, unseen_df, max_full, 100000,10,100)
+print("model: SimpleRNN")
+print("size: 50")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_simple(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,10,32,mod_simple(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,1,100,mod_simple(50), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 25")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_simple(25), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 100")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_simple(100), X_train, X_dev, y_train, y_dev,X_new)
 
-pred_slow_BS_fl,history_slow_BS_fl,model_slow_BS_fl = LSTM_model(df, unseen_df, max_full, 100000,10,100)
-pred_slow_32_fl,history_slow_32_fl,model_slow_32_fl = LSTM_model(df, unseen_df, max_full, 100000,10,32)
+print("model: Conv1D")
+print("size: 50")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_conv(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,10,32,mod_conv(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,1,100,mod_conv(50), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 25")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_conv(25), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 100")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_conv(100), X_train, X_dev, y_train, y_dev,X_new)
 
+print("model: Dense")
+print("size: 50")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_dense(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,10,32,mod_dense(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,1,100,mod_dense(50), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 25")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_dense(25), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 100")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_dense(100), X_train, X_dev, y_train, y_dev,X_new)
+
+#with 500 sample dataset, parameters for the results presented in the report
+X_train, X_dev,y_train, y_dev,MAX_NB_WORDS,MAX_LEN,X, X_new= processing(data_df_1000, unseen_df_1000,1000,100000)
+print("model: Dense")
+print("size: 50")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_dense(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,10,32,mod_dense(50), X_train, X_dev, y_train, y_dev,X_new)
+pred_slow,history_slow=run_model(MAX_LEN,1,100,mod_dense(50), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 25")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_dense(25), X_train, X_dev, y_train, y_dev,X_new)
+print("size: 100")
+pred_slow,history_slow=run_model(MAX_LEN,10,100,mod_dense(100), X_train, X_dev, y_train, y_dev,X_new)
 
